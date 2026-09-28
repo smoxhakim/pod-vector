@@ -1,0 +1,315 @@
+// Prisma schema — POD Vector Studio data model (see ARCHITECTURE.md "Data model").
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  passwordHash     String?
+  name             String?
+  plan             Plan     @default(free)
+  stripeCustomerId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  projects      Project[]
+  presets       PODPreset[]
+  integrations  Integration[]
+  subscriptions Subscription[]
+  usageCounters UsageCounter[]
+  batchJobs     BatchJob[]
+}
+
+enum Plan {
+  free
+  pro
+  studio
+}
+
+model Subscription {
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeSubscriptionId String   @unique
+  plan                 Plan
+  status               String
+  currentPeriodEnd     DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model UsageCounter {
+  id                  String @id @default(uuid())
+  userId              String
+  user                User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period              String // YYYY-MM
+  vectorizationsCount Int    @default(0)
+  aiCallsCount        Int    @default(0)
+  exportsCount        Int    @default(0)
+
+  @@unique([userId, period])
+}
+
+enum ProjectStatus {
+  draft
+  processing
+  ready
+  archived
+}
+
+model Project {
+  id               String          @id @default(uuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  productType      String?
+  tags             String[]
+  status           ProjectStatus   @default(draft)
+  currentVersionId String?         @unique
+  currentVersion   ProjectVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  versions          ProjectVersion[]  @relation("ProjectVersions")
+  assets            Asset[]
+  jobs              Job[]
+  batchItems        BatchItem[]
+  integrationPushes IntegrationPush[]
+
+  @@index([userId, updatedAt])
+}
+
+model ProjectVersion {
+  id                    String          @id @default(uuid())
+  projectId             String
+  project               Project         @relation("ProjectVersions", fields: [projectId], references: [id], onDelete: Cascade)
+  versionNumber         Int
+  parentVersionId       String?
+  parentVersion         ProjectVersion? @relation("VersionHistory", fields: [parentVersionId], references: [id], onDelete: SetNull)
+  vectorizationSettings Json?
+  cleanupSettings       Json?
+  backgroundSettings    Json?
+  colorSettings         Json?
+  printSettings         Json?
+  createdAt             DateTime        @default(now())
+
+  childVersions     ProjectVersion[]   @relation("VersionHistory")
+  currentOf         Project?           @relation("CurrentVersion")
+  assets            Asset[]
+  jobs              Job[]
+  validationResults ValidationResult[]
+  editorState       EditorState?
+
+  @@unique([projectId, versionNumber])
+}
+
+enum AssetType {
+  source
+  cleaned
+  vector
+  cmyk_preview
+  editor_export
+  final_export
+}
+
+enum AssetFormat {
+  png
+  jpg
+  webp
+  svg
+  pdf
+  eps
+  tiff
+}
+
+model Asset {
+  id            String         @id @default(uuid())
+  projectId     String
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versionId     String
+  version       ProjectVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  type          AssetType
+  format        AssetFormat
+  storageKey    String         @unique
+  width         Int?
+  height        Int?
+  dpi           Int?
+  colorMode     String? // rgb | cmyk
+  fileSizeBytes Int?
+  isTrueVector  Boolean?
+  createdAt     DateTime       @default(now())
+
+  resultOfJobs Job[]
+
+  @@index([versionId, type])
+}
+
+enum JobType {
+  cleanup
+  background_removal
+  vectorize
+  cmyk_convert
+  validate
+  export
+  ai_upscale
+  mockup_generate
+  integration_push
+}
+
+enum JobStatus {
+  queued
+  processing
+  completed
+  failed
+}
+
+model Job {
+  id            String          @id @default(uuid())
+  projectId     String
+  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versionId     String?
+  version       ProjectVersion? @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  batchItemId   String?
+  batchItem     BatchItem?      @relation(fields: [batchItemId], references: [id], onDelete: SetNull)
+  type          JobType
+  status        JobStatus       @default(queued)
+  params        Json?
+  resultAssetId String?
+  resultAsset   Asset?          @relation(fields: [resultAssetId], references: [id], onDelete: SetNull)
+  errorMessage  String?
+  createdAt     DateTime        @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  @@index([projectId, createdAt])
+}
+
+model ValidationResult {
+  id        String         @id @default(uuid())
+  versionId String
+  version   ProjectVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  score     Int
+  checks    Json // [{ check, status, message }]
+  createdAt DateTime       @default(now())
+
+  @@index([versionId, createdAt])
+}
+
+model ColorProfile {
+  id         String  @id @default(uuid())
+  name       String
+  type       String // rgb | cmyk
+  iccFileUrl String?
+  isSystem   Boolean @default(true)
+
+  presets PODPreset[]
+}
+
+model PODPreset {
+  id             String        @id @default(uuid())
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  productType    String
+  width          Float
+  height         Float
+  unit           String
+  dpi            Int
+  bleed          Float?
+  safeArea       Json?
+  colorProfileId String?
+  colorProfile   ColorProfile? @relation(fields: [colorProfileId], references: [id], onDelete: SetNull)
+  background     String?
+  isSystem       Boolean       @default(false)
+
+  @@index([userId])
+}
+
+model EditorState {
+  id         String         @id @default(uuid())
+  versionId  String         @unique
+  version    ProjectVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  canvasJSON Json
+  updatedAt  DateTime       @updatedAt
+}
+
+enum BatchStatus {
+  queued
+  processing
+  completed
+  completed_with_errors
+}
+
+model BatchJob {
+  id             String      @id @default(uuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  status         BatchStatus @default(queued)
+  settings       Json?
+  totalFiles     Int
+  completedFiles Int         @default(0)
+  failedFiles    Int         @default(0)
+  createdAt      DateTime    @default(now())
+
+  items BatchItem[]
+
+  @@index([userId])
+}
+
+enum BatchItemStatus {
+  queued
+  processing
+  completed
+  failed
+  overridden
+}
+
+model BatchItem {
+  id         String          @id @default(uuid())
+  batchJobId String
+  batchJob   BatchJob        @relation(fields: [batchJobId], references: [id], onDelete: Cascade)
+  projectId  String
+  project    Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  orderIndex Int
+  status     BatchItemStatus @default(queued)
+
+  jobs Job[]
+
+  @@index([batchJobId, orderIndex])
+}
+
+model Integration {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider       String // printful | printify | shopify | etsy
+  accessToken    String // encrypted at rest
+  refreshToken   String? // encrypted at rest
+  externalShopId String?
+  connectedAt    DateTime @default(now())
+
+  pushes IntegrationPush[]
+
+  @@unique([userId, provider])
+}
+
+model IntegrationPush {
+  id                String      @id @default(uuid())
+  projectId         String
+  project           Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  integrationId     String
+  integration       Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  externalProductId String?
+  status            String // pending | success | failed
+  pushedAt          DateTime?
+}

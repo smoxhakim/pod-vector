@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+dist/
+build/
+.next/
+apps/web/.next/
+apps/worker/dist/
+packages/db/generated/
+.turbo/
+*.log
+.DS_Store
+volumes/
+docker-compose.override.yml
+coverage/
+*.tsbuildinfo

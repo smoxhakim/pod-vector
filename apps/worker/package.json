@@ -1,0 +1,22 @@
+{
+  "name": "@pod-vector-studio/worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pod-vector-studio/db": "*",
+    "@pod-vector-studio/shared": "*",
+    "bullmq": "^5.7.0",
+    "dotenv": "^16.4.0",
+    "ioredis": "^5.4.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "typescript": "^5.4.0"
+  }
+}

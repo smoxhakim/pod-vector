@@ -1,0 +1,21 @@
+# Local infra: Postgres + Redis. `npm run infra:up`
+# Host ports are offset (5433/6380) so they don't collide with other local projects.
+# TODO (Phase 1.4): add a local R2 stand-in for uploads — the official minio/minio
+# image is no longer published on Docker Hub, so this needs a decision.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: podvector
+    ports: ["5433:5432"]
+    volumes: ["./volumes/postgres:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6380:6379"]
