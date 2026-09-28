@@ -101,6 +101,20 @@ export async function readObjectStart(key: string, length: number): Promise<Uint
   return res.Body ? res.Body.transformToByteArray() : new Uint8Array();
 }
 
+/** Whole object as bytes (worker-side processing input). */
+export async function getObjectBytes(key: string): Promise<Uint8Array> {
+  const { client, bucket } = s3();
+  const res = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  if (!res.Body) throw new Error(`Empty object: ${key}`);
+  return res.Body.transformToByteArray();
+}
+
+/** Server-side upload (worker outputs such as vector SVGs). */
+export async function putObject(key: string, body: Uint8Array | string, contentType: string): Promise<void> {
+  const { client, bucket } = s3();
+  await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }));
+}
+
 export async function deleteObject(key: string): Promise<void> {
   await deleteKeys([key]);
 }

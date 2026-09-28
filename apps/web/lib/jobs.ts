@@ -44,12 +44,13 @@ export async function enqueueJob(input: {
   type: JobType;
   projectId: string;
   versionId?: string | null;
-  params?: Prisma.InputJsonObject;
+  /** Plain JSON-serialisable object (becomes Job.params and the queue payload's params). */
+  params?: object;
 }): Promise<Job> {
   const queueName = JOB_TYPE_QUEUE[input.type];
   if (!queueName) throw new Error(`No queue configured for job type "${input.type}"`);
 
-  const params = input.params ?? {};
+  const params = (input.params ?? {}) as Prisma.InputJsonObject;
   const job = await prisma.job.create({
     data: { type: input.type, projectId: input.projectId, versionId: input.versionId ?? null, params, status: 'queued' },
   });

@@ -76,6 +76,15 @@ export function getCurrentSource(project: Pick<Project, 'currentVersionId'>) {
   return prisma.asset.findFirst({ where: { versionId: project.currentVersionId, type: 'source' } });
 }
 
+/** The newest vector result on the current version, if any. */
+export function getCurrentVector(project: Pick<Project, 'currentVersionId'>) {
+  if (!project.currentVersionId) return null;
+  return prisma.asset.findFirst({
+    where: { versionId: project.currentVersionId, type: 'vector' },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
 /** Returns the project only if it belongs to the user — callers respond 404 otherwise. */
 export function getOwnedProject(projectId: string, userId: string) {
   return prisma.project.findFirst({ where: { id: projectId, userId } });

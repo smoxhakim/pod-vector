@@ -6,7 +6,7 @@
 - [x] Project CRUD + dashboard (new/recent projects)
 - [ ] Upload flow: pre-signed R2 upload, Asset(source) + ProjectVersion creation
 - [x] Redis + BullMQ wiring, Job table, no-op job proven end-to-end
-- [ ] Vectorization engine v1 (potrace/imagetracer, Simple/Logo mode) + true-vector validator
+- [x] Vectorization engine v1 (potrace/imagetracer, Simple/Logo mode) + true-vector validator
 - [ ] Basic background removal (color-key, white/transparent auto-detect)
 - [ ] Preview UI: Original vs Vector toggle, zoom controls
 - [ ] Export: SVG + PNG (transparent)

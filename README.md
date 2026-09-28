@@ -42,6 +42,16 @@ which moves the row through `queued → processing → completed | failed`. Clie
 `GET /api/jobs/:id` (React: `useJob(jobId)`). In dev, the workspace has a "Dev · job queue"
 panel that runs a no-op job end to end.
 
+## Vectorization (Logo mode)
+
+`apps/worker/src/vectorizer`: sharp decodes the source (median-filtered if JPEG, capped at
+3000px for tracing), `palette.ts` reduces it to its real flat colours (merges near-duplicates
+in Lab, rejects anti-aliasing blends, resolves edge pixels from their neighbours), then each
+colour layer is traced with potrace. Layers are stacked (each mask includes the layers above
+it) so adjacent shapes never show hairline gaps. Every result passes `isTrueVector()` — real
+path geometry, no `<image>`/data URIs — or the job fails honestly. Run `npm test -w
+@pod-vector-studio/worker` for the engine tests.
+
 ## Storage setup (Cloudflare R2)
 
 Uploads go straight from the browser to R2 via presigned URLs; the app never proxies file bytes.
@@ -70,4 +80,4 @@ its whole prefix.
 
 ## Status
 
-Phase 1.1 (scaffold), 1.2 (auth), 1.3 (projects), 1.4 (uploads, pending R2 verification) and 1.5 (job queue) done — see TODO.md for the phased roadmap.
+Phase 1.1 (scaffold), 1.2 (auth), 1.3 (projects), 1.4 (uploads), 1.5 (job queue) and 1.6 (Logo-mode vectorization) done; 1.4 and 1.6 still need an end-to-end run against R2 — see TODO.md for the phased roadmap.

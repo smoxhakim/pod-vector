@@ -8,12 +8,14 @@ import { prisma } from '@pod-vector-studio/db';
 import { QUEUES, type QueueName } from '@pod-vector-studio/shared';
 import { Worker, type Processor } from 'bullmq';
 import { noopHandler } from './jobs/noop';
+import { vectorizeHandler } from './jobs/vectorize';
 import { runJob } from './jobs/run-job';
 import { connection } from './redis';
 
 // Filled in as roadmap milestones land (vectorize, background-removal, export, ...).
 const handlers: Partial<Record<QueueName, Processor<any>>> = {
   [QUEUES.system]: runJob(noopHandler),
+  [QUEUES.vectorize]: runJob(vectorizeHandler),
 };
 
 function startWorkers(): Worker[] {

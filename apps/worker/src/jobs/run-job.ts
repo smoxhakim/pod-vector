@@ -1,6 +1,7 @@
 import { prisma } from '@pod-vector-studio/db';
 import type { JobPayload } from '@pod-vector-studio/shared';
 import type { Job as BullJob, Processor } from 'bullmq';
+import { JobError } from './errors';
 
 export interface JobResult {
   /** Asset produced by the job, if any (e.g. the vector SVG). */
@@ -36,7 +37,8 @@ export function runJob<P>(handler: JobHandler<P>): Processor<JobPayload<P>> {
         data: { status: 'completed', completedAt: new Date(), resultAssetId: result.resultAssetId ?? null },
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = userFacingMessage(err);
+      if (!(err instanceof JobError)) console.error(`[${job.queueName}] job ${jobId} error:`, err);
       const finalAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
       await prisma.job
         .update({
@@ -49,4 +51,10 @@ export function runJob<P>(handler: JobHandler<P>): Processor<JobPayload<P>> {
       throw err;
     }
   };
+}
+
+/** Errors meant for users pass through; anything else gets a generic message (details are logged). */
+function userFacingMessage(err: unknown): string {
+  if (err instanceof JobError) return err.message;
+  return 'Processing failed unexpectedly. Please try again.';
 }
