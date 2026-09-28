@@ -11,6 +11,7 @@ import { getCurrentCleaned, getCurrentSource, getCurrentVector, getOwnedProject 
 import { ArtworkView } from './_components/artwork-view';
 import { BackgroundPanel } from './_components/background-panel';
 import { DevJobPanel } from './_components/dev-job-panel';
+import { ExportPanel } from './_components/export-panel';
 import { UploadPanel } from './_components/upload-panel';
 import { VectorizePanel } from './_components/vectorize-panel';
 
@@ -55,6 +56,10 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
   const currentInput = cleaned?.id ?? source?.id;
   const vectorStale = !!vector && (tracedFrom ? tracedFrom !== currentInput : !!cleaned);
   const bgSettings = (version?.backgroundSettings ?? null) as BackgroundSettings | null;
+  // Transparent if the vector was traced from the background-removed image, or the upload
+  // was transparent to begin with.
+  const vectorHasBackground =
+    !!vector && !((cleaned && tracedFrom === cleaned.id) || bgSettings?.outcome === 'already_transparent');
 
   const productLabel = isProductType(project.productType) ? PRODUCT_TYPES[project.productType] : null;
 
@@ -84,7 +89,12 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
             vectorStale={vectorStale}
             activeJobId={activeJobs.find((j) => j.type === 'vectorize')?.id ?? null}
           />
-          {/* TODO (Phase 1.9): export panel */}
+          <ExportPanel
+            projectId={project.id}
+            hasVector={!!vector}
+            vectorStale={vectorStale}
+            vectorHasBackground={vectorHasBackground}
+          />
           {process.env.NODE_ENV !== 'production' && <DevJobPanel projectId={project.id} />}
         </aside>
 

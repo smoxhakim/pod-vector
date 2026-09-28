@@ -41,8 +41,17 @@ export function getOwnedAsset(assetId: string, userId: string) {
   });
 }
 
-/** Filesystem-safe download name, e.g. "Moroccan Eagle T-Shirt-source.png". */
+const FILENAME_SUFFIX: Record<Asset['type'], string> = {
+  source: '-original',
+  cleaned: '-no-background',
+  vector: '-vector',
+  cmyk_preview: '-cmyk-preview',
+  editor_export: '-edited',
+  final_export: '',
+};
+
+/** Filesystem-safe download name, e.g. "Moroccan Eagle T-Shirt.png" or "… -no-background.png". */
 export function downloadFilename(projectName: string, asset: Pick<Asset, 'type' | 'format'>): string {
   const base = projectName.replace(/[^\w\- ]+/g, '').trim().slice(0, 80) || 'design';
-  return `${base}-${asset.type}.${asset.format}`;
+  return `${base}${FILENAME_SUFFIX[asset.type]}.${asset.format}`;
 }

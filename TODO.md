@@ -9,7 +9,7 @@
 - [x] Vectorization engine v1 (potrace/imagetracer, Simple/Logo mode) + true-vector validator
 - [x] Basic background removal (color-key, white/transparent auto-detect)
 - [x] Preview UI: Original vs Vector toggle, zoom controls
-- [ ] Export: SVG + PNG (transparent)
+- [x] Export: SVG + PNG (transparent)
 - [ ] Ship checkpoint: upload → vectorize → preview → export
 
 ## Phase 2 — Vectorization Modes & Quality Controls
