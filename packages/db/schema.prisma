@@ -194,6 +194,7 @@ model Asset {
 }
 
 enum JobType {
+  noop // queue/worker smoke test (dev only)
   cleanup
   background_removal
   vectorize

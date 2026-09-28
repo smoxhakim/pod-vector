@@ -10,10 +10,7 @@ export interface VectorizeParams {
   minShapeSize?: number;
 }
 
-export interface VectorizeJobPayload {
-  jobId: string;
-  projectId: string;
-  versionId: string;
+export interface VectorizeJobParams {
   mode: VectorizeMode;
   quality: VectorizeParams;
 }

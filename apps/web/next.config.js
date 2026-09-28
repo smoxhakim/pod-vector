@@ -14,6 +14,9 @@ const nextConfig = {
   },
   experimental: {
     serverActions: { bodySizeLimit: '10mb' },
+    // Node-only queue clients: load from node_modules at runtime instead of bundling
+    // (bundling BullMQ trips over its optional @valkey/valkey-glide import).
+    serverComponentsExternalPackages: ['bullmq', 'ioredis'],
   },
 };
 

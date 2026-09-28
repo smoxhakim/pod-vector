@@ -33,6 +33,15 @@ Other scripts: `npm run typecheck`, `npm run build`, `npm run db:studio`, `npm r
 Internal packages (`@pod-vector-studio/db`, `@pod-vector-studio/shared`) ship TypeScript
 source directly: Next transpiles them via `transpilePackages`, the worker runs under `tsx`.
 
+## Background jobs
+
+Anything slow runs in the worker. The web app calls `enqueueJob()` (`apps/web/lib/jobs.ts`),
+which writes a `Job` row and pushes `{ jobId, projectId, versionId, params }` onto the job
+type's BullMQ queue. The worker wraps each handler in `runJob()` (`apps/worker/src/jobs`),
+which moves the row through `queued → processing → completed | failed`. Clients poll
+`GET /api/jobs/:id` (React: `useJob(jobId)`). In dev, the workspace has a "Dev · job queue"
+panel that runs a no-op job end to end.
+
 ## Storage setup (Cloudflare R2)
 
 Uploads go straight from the browser to R2 via presigned URLs; the app never proxies file bytes.
@@ -61,4 +70,4 @@ its whole prefix.
 
 ## Status
 
-Phase 1.1 (scaffold), 1.2 (auth) and 1.3 (projects) done — see TODO.md for the phased roadmap.
+Phase 1.1 (scaffold), 1.2 (auth), 1.3 (projects), 1.4 (uploads, pending R2 verification) and 1.5 (job queue) done — see TODO.md for the phased roadmap.

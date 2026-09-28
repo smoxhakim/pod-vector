@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { getCurrentSource, getOwnedProject } from '@/lib/projects';
+import { DevJobPanel } from './_components/dev-job-panel';
 import { UploadPanel } from './_components/upload-panel';
 
 interface WorkspacePageProps {
@@ -39,6 +40,7 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
         <aside className="space-y-6 overflow-y-auto border-r p-4">
           <UploadPanel projectId={project.id} hasSource={!!source} />
           {/* TODO (Phase 1.6+): vectorize, background, export panels */}
+          {process.env.NODE_ENV !== 'production' && <DevJobPanel projectId={project.id} />}
         </aside>
 
         <section className="checkerboard flex items-center justify-center overflow-auto p-8">
