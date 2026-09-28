@@ -8,13 +8,14 @@
 - [x] Redis + BullMQ wiring, Job table, no-op job proven end-to-end
 - [x] Vectorization engine v1 (potrace/imagetracer, Simple/Logo mode) + true-vector validator
 - [x] Basic background removal (color-key, white/transparent auto-detect)
-- [ ] Preview UI: Original vs Vector toggle, zoom controls
+- [x] Preview UI: Original vs Vector toggle, zoom controls
 - [ ] Export: SVG + PNG (transparent)
 - [ ] Ship checkpoint: upload → vectorize → preview → export
 
 ## Phase 2 — Vectorization Modes & Quality Controls
 - [ ] Illustration mode (multi-color layer separation)
 - [ ] Line Art mode (stroke-preserving trace)
+- [ ] Trace quality: potrace leaves ≤1px flat spots at the extremes of large curves (seen at 200% zoom on circles); try 2x-supersampled layer masks
 - [ ] Quality control panel + Regenerate
 - [ ] Pre-vectorization cleanup pipeline (sharp-based)
 - [ ] Original/Cleaned/Vectorized compare + before/after slider

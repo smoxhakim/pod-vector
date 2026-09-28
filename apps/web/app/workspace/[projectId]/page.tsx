@@ -88,11 +88,13 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
           {process.env.NODE_ENV !== 'production' && <DevJobPanel projectId={project.id} />}
         </aside>
 
-        <section className="checkerboard relative flex items-center justify-center overflow-auto p-8">
+        <section className="checkerboard relative overflow-hidden">
           <ArtworkView
             name={project.name}
             urls={{ vector: vectorUrl, cleaned: cleanedUrl, original: sourceUrl }}
             initial={vector && !vectorStale ? 'vector' : cleaned ? 'cleaned' : 'original'}
+            width={source?.width ?? 1}
+            height={source?.height ?? 1}
           />
         </section>
 
