@@ -90,4 +90,4 @@ its whole prefix.
 
 ## Status
 
-Phase 1.1 (scaffold), 1.2 (auth), 1.3 (projects), 1.4 (uploads), 1.5 (job queue), 1.6 (Logo-mode vectorization), 1.7 (background removal), 1.8 (preview + zoom) and 1.9 (SVG/PNG export) done. Next: the Phase 1 ship checkpoint, an end-to-end run against R2 — see TODO.md for the phased roadmap.
+Phase 1.1 (scaffold), 1.2 (auth), 1.3 (projects), 1.4 (uploads), 1.5 (job queue), 1.6 (Logo-mode vectorization), 1.7 (background removal), 1.8 (preview + zoom) and 1.9 (SVG/PNG export) done, and the Phase 1 ship checkpoint passed end-to-end against R2. Next: Phase 2 — see TODO.md for the phased roadmap.

@@ -10,7 +10,7 @@
 - [x] Basic background removal (color-key, white/transparent auto-detect)
 - [x] Preview UI: Original vs Vector toggle, zoom controls
 - [x] Export: SVG + PNG (transparent)
-- [ ] Ship checkpoint: upload → vectorize → preview → export
+- [x] Ship checkpoint: upload → vectorize → preview → export (verified end-to-end against R2, 2026-09-28)
 
 ## Phase 2 — Vectorization Modes & Quality Controls
 - [ ] Illustration mode (multi-color layer separation)
