@@ -2,7 +2,8 @@ const path = require('node:path');
 const { loadEnvConfig } = require('@next/env');
 
 // Single .env at the monorepo root, shared with the worker and packages/db.
-loadEnvConfig(path.resolve(__dirname, '../..'));
+// forceReload: Next has already loaded (and cached) env for apps/web by this point.
+loadEnvConfig(path.resolve(__dirname, '../..'), process.env.NODE_ENV !== 'production', console, true);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

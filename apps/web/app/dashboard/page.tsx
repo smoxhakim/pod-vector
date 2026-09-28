@@ -1,5 +1,4 @@
-// Dashboard: New Project, Recent Projects.
-// TODO (Phase 1.2): server-side session guard, redirect to /login if unauthenticated.
+// Dashboard: New Project, Recent Projects. Auth is enforced by dashboard/layout.tsx.
 // TODO (Phase 1.3): New Project button + Recent Projects list from /api/projects.
 
 export default async function DashboardPage() {

@@ -22,8 +22,11 @@ Requires Node 20+ and Docker.
    milestone.
 4. `npm run db:migrate` — applies Prisma migrations in `packages/db/migrations`.
 5. `npm run dev` — Turborepo runs web + worker in parallel.
-6. Web app: http://localhost:3000 (Next picks the next free port if 3000 is taken). The worker
-   has no HTTP surface (queue consumer only).
+6. Web app: http://localhost:3100 (keep `NEXTAUTH_URL` in sync if you change the port). The
+   worker has no HTTP surface (queue consumer only).
+
+Auth: sign up at `/signup` (email + password) or use "Email me a sign-in link" on `/login`.
+Until Resend is wired up, magic links are printed to the web dev server console.
 
 Other scripts: `npm run typecheck`, `npm run build`, `npm run db:studio`, `npm run infra:down`.
 
@@ -32,4 +35,4 @@ source directly: Next transpiles them via `transpilePackages`, the worker runs u
 
 ## Status
 
-Phase 1.1 (monorepo scaffold) done — see TODO.md for the phased roadmap.
+Phase 1.1 (monorepo scaffold) and 1.2 (auth) done — see TODO.md for the phased roadmap.

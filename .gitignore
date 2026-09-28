@@ -15,3 +15,4 @@ volumes/
 docker-compose.override.yml
 coverage/
 *.tsbuildinfo
+.gstack/

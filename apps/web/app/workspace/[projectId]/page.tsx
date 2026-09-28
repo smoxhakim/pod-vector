@@ -1,11 +1,14 @@
 // Main workspace: left sidebar (upload/cleanup/vectorize/colors/print/export),
 // center canvas, right contextual panel.
 
+import { requireUser } from '@/lib/auth';
+
 interface WorkspacePageProps {
   params: { projectId: string };
 }
 
 export default async function WorkspacePage({ params }: WorkspacePageProps) {
+  await requireUser();
   const { projectId } = params;
   // TODO (Phase 1.3): load project + current ProjectVersion via Prisma, 404 if not owned.
 

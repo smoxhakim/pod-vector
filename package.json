@@ -14,7 +14,7 @@
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
     "db:generate": "npm run generate --workspace @pod-vector-studio/db",
-    "db:migrate": "npm run migrate --workspace @pod-vector-studio/db",
+    "db:migrate": "npm run migrate --workspace @pod-vector-studio/db --",
     "db:studio": "npm run studio --workspace @pod-vector-studio/db"
   },
   "devDependencies": {

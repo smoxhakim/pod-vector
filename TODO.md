@@ -2,7 +2,7 @@
 
 ## Phase 1 — Core Vectorization Loop
 - [x] Monorepo scaffold (Turborepo apps/web, apps/worker, packages/db, packages/shared)
-- [ ] Auth (Auth.js email/password + magic link), User table, protected dashboard shell
+- [x] Auth (Auth.js email/password + magic link), User table, protected dashboard shell
 - [ ] Project CRUD + dashboard (new/recent projects)
 - [ ] Upload flow: pre-signed R2 upload, Asset(source) + ProjectVersion creation
 - [ ] Redis + BullMQ wiring, Job table, no-op job proven end-to-end
