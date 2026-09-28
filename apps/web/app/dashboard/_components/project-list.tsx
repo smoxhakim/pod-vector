@@ -103,10 +103,15 @@ function ProjectCard({ project, view }: { project: ProjectDTO; view: View }) {
     <li className={cn('group flex flex-col rounded-lg border bg-card transition-shadow hover:shadow-sm', busy && 'opacity-60')}>
       <Link
         href={`/workspace/${project.id}`}
-        className="flex aspect-[4/3] items-center justify-center rounded-t-lg bg-muted text-xs text-muted-foreground"
+        className="checkerboard flex aspect-[4/3] items-center justify-center overflow-hidden rounded-t-lg text-xs text-muted-foreground"
       >
-        {/* TODO (Phase 1.4): source/vector thumbnail */}
-        No artwork yet
+        {project.thumbnailUrl ? (
+          // Signed R2 URL: plain <img> so the bytes never pass through the Next image optimizer.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={project.thumbnailUrl} alt="" className="h-full w-full object-contain p-3" loading="lazy" />
+        ) : (
+          'No artwork yet'
+        )}
       </Link>
       <div className="flex flex-1 flex-col gap-2 p-3">
         {editing ? (

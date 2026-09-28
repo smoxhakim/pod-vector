@@ -1,5 +1,6 @@
 import { prisma, type Prisma, type Project, type ProjectStatus } from '@pod-vector-studio/db';
 import { isProductType, type ProductType } from '@pod-vector-studio/shared';
+import { presignDownload } from '@pod-vector-studio/shared/storage';
 
 export const MAX_NAME_LENGTH = 120;
 const MAX_TAGS = 20;
@@ -13,11 +14,13 @@ export interface ProjectDTO {
   tags: string[];
   status: ProjectStatus;
   currentVersionId: string | null;
+  /** Short-lived signed URL of the current source image, when there is one. */
+  thumbnailUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export function toProjectDTO(p: Project): ProjectDTO {
+export function toProjectDTO(p: Project, thumbnailUrl: string | null = null): ProjectDTO {
   return {
     id: p.id,
     name: p.name,
@@ -25,6 +28,7 @@ export function toProjectDTO(p: Project): ProjectDTO {
     tags: p.tags,
     status: p.status,
     currentVersionId: p.currentVersionId,
+    thumbnailUrl,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
   };
@@ -49,8 +53,27 @@ export async function listProjects(userId: string, filters: ListFilters = {}): P
   if (filters.search?.trim()) where.name = { contains: filters.search.trim(), mode: 'insensitive' };
   if (filters.tag?.trim()) where.tags = { has: filters.tag.trim() };
 
-  const projects = await prisma.project.findMany({ where, orderBy: { updatedAt: 'desc' }, take: 100 });
-  return projects.map(toProjectDTO);
+  const projects = await prisma.project.findMany({
+    where,
+    orderBy: { updatedAt: 'desc' },
+    take: 100,
+    include: {
+      currentVersion: { select: { assets: { where: { type: 'source' }, select: { storageKey: true }, take: 1 } } },
+    },
+  });
+  // Signing is local HMAC work (no network), so per-card URLs are cheap.
+  return Promise.all(
+    projects.map(async ({ currentVersion, ...project }) => {
+      const source = currentVersion?.assets[0];
+      return toProjectDTO(project, source ? await presignDownload(source.storageKey) : null);
+    }),
+  );
+}
+
+/** The current version's source image, if any. */
+export function getCurrentSource(project: Pick<Project, 'currentVersionId'>) {
+  if (!project.currentVersionId) return null;
+  return prisma.asset.findFirst({ where: { versionId: project.currentVersionId, type: 'source' } });
 }
 
 /** Returns the project only if it belongs to the user — callers respond 404 otherwise. */

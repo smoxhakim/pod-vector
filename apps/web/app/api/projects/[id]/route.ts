@@ -1,4 +1,6 @@
 import { prisma, type Prisma } from '@pod-vector-studio/db';
+import { projectStoragePrefix } from '@pod-vector-studio/shared';
+import { deletePrefix, presignDownload } from '@pod-vector-studio/shared/storage';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSessionUserId, unauthorized } from '@/lib/auth';
 import { badRequest, notFound, readJson } from '@/lib/http';
@@ -22,7 +24,16 @@ export async function GET(_req: NextRequest, { params }: Params) {
           versionNumber: true,
           createdAt: true,
           assets: {
-            select: { id: true, type: true, format: true, width: true, height: true, isTrueVector: true },
+            select: {
+              id: true,
+              type: true,
+              format: true,
+              width: true,
+              height: true,
+              fileSizeBytes: true,
+              isTrueVector: true,
+              storageKey: true,
+            },
             orderBy: { createdAt: 'asc' },
           },
         },
@@ -32,7 +43,14 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (!project) return notFound();
 
   const { currentVersion, ...rest } = project;
-  return NextResponse.json({ project: toProjectDTO(rest), currentVersion });
+  const source = currentVersion?.assets.find((a) => a.type === 'source');
+  const thumbnailUrl = source ? await presignDownload(source.storageKey) : null;
+  // Storage keys are internal; clients use /api/assets/:id/download.
+  const version = currentVersion && {
+    ...currentVersion,
+    assets: currentVersion.assets.map(({ storageKey: _key, ...asset }) => asset),
+  };
+  return NextResponse.json({ project: toProjectDTO(rest, thumbnailUrl), currentVersion: version });
 }
 
 // PATCH /api/projects/:id { name?, productType?, tags?, archived? }
@@ -57,7 +75,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json({ project: toProjectDTO(project) });
 }
 
-// DELETE /api/projects/:id — removes the project; versions, assets and jobs cascade in the DB.
+// DELETE /api/projects/:id — removes the project (versions, assets and jobs cascade in the DB)
+// and its files in R2.
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const userId = await getSessionUserId();
   if (!userId) return unauthorized();
@@ -65,7 +84,13 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const existing = await getOwnedProject(params.id, userId);
   if (!existing) return notFound();
 
-  // TODO (Phase 1.4): also delete the project's objects from R2 once uploads exist.
+  const hasFiles = await prisma.asset.count({ where: { projectId: existing.id } });
   await prisma.project.delete({ where: { id: existing.id } });
+  if (hasFiles) {
+    // Best effort: the DB row is gone either way; a failure here only leaves orphaned files.
+    await deletePrefix(projectStoragePrefix(userId, existing.id)).catch((err) =>
+      console.error(`[projects] failed to delete files for ${existing.id}:`, err),
+    );
+  }
   return new NextResponse(null, { status: 204 });
 }

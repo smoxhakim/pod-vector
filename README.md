@@ -18,8 +18,8 @@ Requires Node 20+ and Docker.
 1. `cp .env.example .env`
 2. `npm install` (also runs `prisma generate`)
 3. `npm run infra:up` — Postgres on :5433, Redis on :6380 (offset from defaults to avoid
-   clashing with other local projects). Object storage (R2 stand-in) lands with the upload
-   milestone.
+   clashing with other local projects). File storage is a real Cloudflare R2 dev bucket — see
+   "Storage setup" below.
 4. `npm run db:migrate` — applies Prisma migrations in `packages/db/migrations`.
 5. `npm run dev` — Turborepo runs web + worker in parallel.
 6. Web app: http://localhost:3100 (keep `NEXTAUTH_URL` in sync if you change the port). The
@@ -32,6 +32,32 @@ Other scripts: `npm run typecheck`, `npm run build`, `npm run db:studio`, `npm r
 
 Internal packages (`@pod-vector-studio/db`, `@pod-vector-studio/shared`) ship TypeScript
 source directly: Next transpiles them via `transpilePackages`, the worker runs under `tsx`.
+
+## Storage setup (Cloudflare R2)
+
+Uploads go straight from the browser to R2 via presigned URLs; the app never proxies file bytes.
+
+1. Cloudflare dashboard → R2 Object Storage → **Create bucket** (e.g. `pod-vector-studio-dev`).
+   Keep public access **off** — all reads use short-lived signed URLs.
+2. Bucket → Settings → **CORS policy**:
+   ```json
+   [
+     {
+       "AllowedOrigins": ["http://localhost:3100"],
+       "AllowedMethods": ["GET", "PUT", "HEAD"],
+       "AllowedHeaders": ["content-type"],
+       "ExposeHeaders": ["ETag"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
+   Add your production origin when you deploy.
+3. R2 → **Manage API tokens** → Create API token: *Object Read & Write*, scoped to that bucket only.
+4. Put the Access Key ID, Secret Access Key, account ID, bucket name and
+   `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` endpoint into `.env` (`R2_*` vars).
+
+Keys are laid out as `users/<userId>/projects/<projectId>/...`, so deleting a project removes
+its whole prefix.
 
 ## Status
 
