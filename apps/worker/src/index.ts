@@ -6,6 +6,7 @@ import './env'; // must load before anything reads process.env (Prisma, Redis)
 
 import { prisma } from '@pod-vector-studio/db';
 import { QUEUES, type QueueName } from '@pod-vector-studio/shared';
+import { storageConfigHint, storageConfigProblem } from '@pod-vector-studio/shared/storage';
 import { Worker, type Processor } from 'bullmq';
 import { backgroundHandler } from './jobs/background';
 import { exportHandler } from './jobs/export';
@@ -32,6 +33,9 @@ function startWorkers(): Worker[] {
   console.log(`Worker started. Consuming queues: ${Object.keys(handlers).join(', ') || '(none yet)'}`);
   return workers;
 }
+
+const storageProblem = storageConfigProblem();
+if (storageProblem) console.warn(`⚠️  ${storageConfigHint(storageProblem)} Jobs that read or write files will fail.`);
 
 const workers = startWorkers();
 

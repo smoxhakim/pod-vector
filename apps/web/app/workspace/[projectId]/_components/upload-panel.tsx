@@ -49,7 +49,18 @@ function putWithProgress(url: string, file: File, headers: Record<string, string
     Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
     xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed (${xhr.status}).`)));
-    xhr.onerror = () => reject(new Error('Upload failed. Check your connection (or the bucket CORS policy).'));
+    // A network-level failure: storage unreachable, or (for R2) a CORS rule that doesn't allow
+    // this origin. The browser can't tell us which, so name both, most likely first.
+    xhr.onerror = () =>
+      reject(
+        new Error(
+          process.env.NODE_ENV === 'production'
+            ? "Upload failed: couldn't reach file storage. Check your connection and try again."
+            : "Upload failed: couldn't reach file storage. Check the R2_* values in .env, then that the bucket's CORS rule allows " +
+                window.location.origin +
+                '.',
+        ),
+      );
     xhr.send(file);
   });
 }

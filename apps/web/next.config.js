@@ -14,6 +14,8 @@ const nextConfig = {
   },
   experimental: {
     serverActions: { bodySizeLimit: '10mb' },
+    // instrumentation.ts: startup checks (e.g. warn when file storage isn't configured).
+    instrumentationHook: true,
     // Node-only queue clients: load from node_modules at runtime instead of bundling
     // (bundling BullMQ trips over its optional @valkey/valkey-glide import).
     serverComponentsExternalPackages: ['bullmq', 'ioredis'],

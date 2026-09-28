@@ -19,21 +19,55 @@ interface StorageConfig {
   secretAccessKey: string;
 }
 
-function readConfig(): StorageConfig {
-  const { R2_ACCOUNT_ID, R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY } = process.env;
-  const endpoint = R2_ENDPOINT && !R2_ENDPOINT.includes('<')
-    ? R2_ENDPOINT
-    : R2_ACCOUNT_ID
-      ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
-      : '';
+/** Values that come from templates/old scaffolding rather than a real R2 bucket. */
+const PLACEHOLDER = /^(minioadmin|change-me|your[-_].*|x+)$|</i;
+
+function resolveEndpoint(env: NodeJS.ProcessEnv): string {
+  const { R2_ENDPOINT, R2_ACCOUNT_ID } = env;
+  if (R2_ENDPOINT && !R2_ENDPOINT.includes('<')) return R2_ENDPOINT;
+  return R2_ACCOUNT_ID ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : '';
+}
+
+/**
+ * Why object storage can't work with the current env, or null if it looks usable.
+ * Never includes secret values — safe to log and to show in dev.
+ */
+export function storageConfigProblem(env: NodeJS.ProcessEnv = process.env): string | null {
+  const endpoint = resolveEndpoint(env);
   const missing = [
     !endpoint && 'R2_ENDPOINT (or R2_ACCOUNT_ID)',
-    !R2_BUCKET && 'R2_BUCKET',
-    !R2_ACCESS_KEY_ID && 'R2_ACCESS_KEY_ID',
-    !R2_SECRET_ACCESS_KEY && 'R2_SECRET_ACCESS_KEY',
+    !env.R2_BUCKET && 'R2_BUCKET',
+    !env.R2_ACCESS_KEY_ID && 'R2_ACCESS_KEY_ID',
+    !env.R2_SECRET_ACCESS_KEY && 'R2_SECRET_ACCESS_KEY',
   ].filter(Boolean);
-  if (missing.length) throw new Error(`Object storage is not configured: set ${missing.join(', ')} in .env`);
-  return { endpoint, bucket: R2_BUCKET!, accessKeyId: R2_ACCESS_KEY_ID!, secretAccessKey: R2_SECRET_ACCESS_KEY! };
+  if (missing.length) return `missing ${missing.join(', ')}`;
+
+  const placeholders = (['R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET'] as const).filter((k) =>
+    PLACEHOLDER.test(env[k] ?? ''),
+  );
+  if (placeholders.length) return `${placeholders.join(', ')} still ${placeholders.length > 1 ? 'have' : 'has'} placeholder values`;
+
+  // The old local-MinIO default: nothing listens there any more.
+  if (/^https?:\/\/(localhost|127\.0\.0\.1):9000\/?$/.test(endpoint)) return `R2_ENDPOINT points at ${endpoint} (old local MinIO default)`;
+  if (!/^https?:\/\//.test(endpoint)) return 'R2_ENDPOINT must be a full URL like https://<account>.r2.cloudflarestorage.com';
+  return null;
+}
+
+/** Human-readable one-liner for startup logs and dev error messages. */
+export function storageConfigHint(problem: string): string {
+  return `File storage is not set up: ${problem}. Put your Cloudflare R2 bucket details in the root .env (README → "Storage setup") and restart.`;
+}
+
+function readConfig(): StorageConfig {
+  const problem = storageConfigProblem();
+  if (problem) throw new Error(storageConfigHint(problem));
+  const { R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY } = process.env;
+  return {
+    endpoint: resolveEndpoint(process.env),
+    bucket: R2_BUCKET!,
+    accessKeyId: R2_ACCESS_KEY_ID!,
+    secretAccessKey: R2_SECRET_ACCESS_KEY!,
+  };
 }
 
 let cached: { client: S3Client; bucket: string } | undefined;
@@ -58,12 +92,7 @@ function s3() {
 }
 
 export function isStorageConfigured(): boolean {
-  try {
-    readConfig();
-    return true;
-  } catch {
-    return false;
-  }
+  return storageConfigProblem() === null;
 }
 
 /** Presigned PUT for a direct browser upload. Content-Type is part of the signature. */
