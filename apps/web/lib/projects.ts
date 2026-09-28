@@ -76,6 +76,15 @@ export function getCurrentSource(project: Pick<Project, 'currentVersionId'>) {
   return prisma.asset.findFirst({ where: { versionId: project.currentVersionId, type: 'source' } });
 }
 
+/** The background-removed image on the current version, if any. */
+export function getCurrentCleaned(project: Pick<Project, 'currentVersionId'>) {
+  if (!project.currentVersionId) return null;
+  return prisma.asset.findFirst({
+    where: { versionId: project.currentVersionId, type: 'cleaned' },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
 /** The newest vector result on the current version, if any. */
 export function getCurrentVector(project: Pick<Project, 'currentVersionId'>) {
   if (!project.currentVersionId) return null;

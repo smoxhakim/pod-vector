@@ -1,43 +1,20 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ApiError, api } from '@/lib/api-client';
-import type { JobDTO } from '@/lib/jobs';
-import { useJob } from '@/lib/use-job';
+import { useStartJob } from '@/lib/use-job';
 
 interface Props {
   projectId: string;
   hasSource: boolean;
   hasVector: boolean;
+  /** The vector was traced from an image that has since changed (e.g. background removed). */
+  vectorStale: boolean;
   /** A vectorize job already queued/running when the page loaded. */
   activeJobId: string | null;
 }
 
-export function VectorizePanel({ projectId, hasSource, hasVector, activeJobId }: Props) {
-  const router = useRouter();
-  const [jobId, setJobId] = useState<string | null>(activeJobId);
-  const { data: job } = useJob(jobId);
-
-  const start = useMutation({
-    mutationFn: () =>
-      api<{ job: JobDTO }>(`/api/projects/${projectId}/vectorize`, { method: 'POST', body: { mode: 'logo' } }),
-    onSuccess: ({ job }) => setJobId(job.id),
-    onError: (err) => {
-      // 409: a vectorization is already running for this version — follow it.
-      if (err instanceof ApiError && err.status === 409) setJobId((err.data.job as JobDTO).id);
-    },
-  });
-
-  // Show the new vector as soon as the worker finishes.
-  useEffect(() => {
-    if (job?.status === 'completed') router.refresh();
-  }, [job?.status, router]);
-
-  const running = start.isPending || job?.status === 'queued' || job?.status === 'processing';
-  const error = job?.status === 'failed' ? job.errorMessage : start.error && !(start.error instanceof ApiError && start.error.status === 409) ? start.error.message : null;
+export function VectorizePanel({ projectId, hasSource, hasVector, vectorStale, activeJobId }: Props) {
+  const { start, job, running, error } = useStartJob(`/api/projects/${projectId}/vectorize`, activeJobId);
 
   return (
     <div className="space-y-3">
@@ -46,7 +23,12 @@ export function VectorizePanel({ projectId, hasSource, hasVector, activeJobId }:
         <span className="font-medium">Logo mode</span>
         <span className="block text-muted-foreground">Flat colours, clean paths. Best for logos, icons and simple art.</span>
       </div>
-      <Button className="w-full" disabled={!hasSource || running} onClick={() => start.mutate()}>
+      {vectorStale && !running && (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          The image changed since the last vectorization. Vectorize again to update it.
+        </p>
+      )}
+      <Button className="w-full" disabled={!hasSource || running} onClick={() => start({ mode: 'logo' })}>
         {running ? (job?.status === 'processing' ? 'Tracing…' : 'Queued…') : hasVector ? 'Vectorize again' : 'Vectorize'}
       </Button>
       {!hasSource && <p className="text-xs text-muted-foreground">Upload an image first.</p>}

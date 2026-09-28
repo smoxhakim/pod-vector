@@ -2,13 +2,14 @@
 // center canvas, right contextual panel.
 
 import { prisma } from '@pod-vector-studio/db';
-import { PRODUCT_TYPES, isProductType } from '@pod-vector-studio/shared';
+import { PRODUCT_TYPES, isProductType, type BackgroundSettings } from '@pod-vector-studio/shared';
 import { presignDownload } from '@pod-vector-studio/shared/storage';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
-import { getCurrentSource, getCurrentVector, getOwnedProject } from '@/lib/projects';
+import { getCurrentCleaned, getCurrentSource, getCurrentVector, getOwnedProject } from '@/lib/projects';
 import { ArtworkView } from './_components/artwork-view';
+import { BackgroundPanel } from './_components/background-panel';
 import { DevJobPanel } from './_components/dev-job-panel';
 import { UploadPanel } from './_components/upload-panel';
 import { VectorizePanel } from './_components/vectorize-panel';
@@ -26,21 +27,35 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
   const project = await getOwnedProject(params.projectId, user.id);
   if (!project) notFound();
 
-  const [source, vector, activeJob] = await Promise.all([
+  const versionId = project.currentVersionId;
+  const activeJobs = versionId
+    ? await prisma.job.findMany({
+        where: { versionId, type: { in: ['vectorize', 'background_removal'] }, status: { in: ['queued', 'processing'] } },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, type: true },
+      })
+    : [];
+  const [source, cleaned, vector, version] = await Promise.all([
     getCurrentSource(project),
+    getCurrentCleaned(project),
     getCurrentVector(project),
-    project.currentVersionId
-      ? prisma.job.findFirst({
-          where: { versionId: project.currentVersionId, type: 'vectorize', status: { in: ['queued', 'processing'] } },
-          orderBy: { createdAt: 'desc' },
-          select: { id: true },
+    versionId
+      ? prisma.projectVersion.findUnique({
+          where: { id: versionId },
+          select: { vectorizationSettings: true, backgroundSettings: true },
         })
       : null,
   ]);
-  const [sourceUrl, vectorUrl] = await Promise.all([
-    source ? presignDownload(source.storageKey) : null,
-    vector ? presignDownload(vector.storageKey) : null,
-  ]);
+  const [sourceUrl, cleanedUrl, vectorUrl] = await Promise.all(
+    [source, cleaned, vector].map((a) => (a ? presignDownload(a.storageKey) : null)),
+  );
+
+  // Stale = the vector was traced from a different input than the one vectorize would use now.
+  const tracedFrom = (version?.vectorizationSettings as { inputAssetId?: string } | null)?.inputAssetId;
+  const currentInput = cleaned?.id ?? source?.id;
+  const vectorStale = !!vector && (tracedFrom ? tracedFrom !== currentInput : !!cleaned);
+  const bgSettings = (version?.backgroundSettings ?? null) as BackgroundSettings | null;
+
   const productLabel = isProductType(project.productType) ? PRODUCT_TYPES[project.productType] : null;
 
   return (
@@ -55,18 +70,30 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
       <div className="grid flex-1 grid-cols-[240px_1fr_280px] overflow-hidden">
         <aside className="space-y-6 overflow-y-auto border-r p-4">
           <UploadPanel projectId={project.id} hasSource={!!source} />
+          <BackgroundPanel
+            projectId={project.id}
+            hasSource={!!source}
+            hasCleaned={!!cleaned}
+            settings={bgSettings?.outcome ? bgSettings : null}
+            activeJobId={activeJobs.find((j) => j.type === 'background_removal')?.id ?? null}
+          />
           <VectorizePanel
             projectId={project.id}
             hasSource={!!source}
             hasVector={!!vector}
-            activeJobId={activeJob?.id ?? null}
+            vectorStale={vectorStale}
+            activeJobId={activeJobs.find((j) => j.type === 'vectorize')?.id ?? null}
           />
-          {/* TODO (Phase 1.7+): background removal, export panels */}
+          {/* TODO (Phase 1.9): export panel */}
           {process.env.NODE_ENV !== 'production' && <DevJobPanel projectId={project.id} />}
         </aside>
 
         <section className="checkerboard relative flex items-center justify-center overflow-auto p-8">
-          <ArtworkView name={project.name} sourceUrl={sourceUrl} vectorUrl={vectorUrl} />
+          <ArtworkView
+            name={project.name}
+            urls={{ vector: vectorUrl, cleaned: cleanedUrl, original: sourceUrl }}
+            initial={vector && !vectorStale ? 'vector' : cleaned ? 'cleaned' : 'original'}
+          />
         </section>
 
         <aside className="space-y-3 border-l p-4 text-sm">

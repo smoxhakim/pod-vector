@@ -4,6 +4,7 @@ import { projectStoragePrefix, sniffImageFormat, type VectorizeJobParams } from 
 import { getObjectBytes, putObject } from '@pod-vector-studio/shared/storage';
 import { PotraceVectorizerEngine, VectorizeError, type VectorizerEngine } from '../vectorizer/engine';
 import { inspectSvg } from '../vectorizer/validate';
+import { settleProjectStatus } from './project-status';
 import type { JobHandler } from './run-job';
 
 const engine: VectorizerEngine = new PotraceVectorizerEngine();
@@ -19,17 +20,18 @@ export const vectorizeHandler: JobHandler<VectorizeJobParams> = async ({ project
     where: { id: versionId, projectId },
     include: {
       project: { select: { userId: true } },
-      assets: { where: { type: 'source' }, orderBy: { createdAt: 'desc' }, take: 1 },
+      assets: { where: { type: { in: ['source', 'cleaned'] } }, orderBy: { createdAt: 'desc' } },
     },
   });
-  const source = version?.assets[0];
-  if (!version || !source) throw new VectorizeError('Upload an image before vectorizing.');
+  // Trace the background-removed image when there is one, else the original upload.
+  const input = version?.assets.find((a) => a.type === 'cleaned') ?? version?.assets.find((a) => a.type === 'source');
+  if (!version || !input) throw new VectorizeError('Upload an image before vectorizing.');
 
   await prisma.project.update({ where: { id: projectId }, data: { status: 'processing' } });
   try {
-    const bytes = Buffer.from(await getObjectBytes(source.storageKey));
+    const bytes = Buffer.from(await getObjectBytes(input.storageKey));
     // Re-validate the signature: never trust what the browser said it uploaded.
-    if (sniffImageFormat(bytes) !== source.format) throw new VectorizeError('The source file is not a valid image.');
+    if (sniffImageFormat(bytes) !== input.format) throw new VectorizeError('The source file is not a valid image.');
     await job.updateProgress(10);
 
     const result = await engine.vectorize(bytes, params.mode, params.quality ?? {});
@@ -61,7 +63,8 @@ export const vectorizeHandler: JobHandler<VectorizeJobParams> = async ({ project
       });
       await tx.projectVersion.update({
         where: { id: versionId },
-        data: { vectorizationSettings: { mode: params.mode, ...(params.quality ?? {}) } },
+        // inputAssetId lets the UI tell when the vector is stale (background changed since).
+        data: { vectorizationSettings: { mode: params.mode, ...(params.quality ?? {}), inputAssetId: input.id } },
       });
       await tx.project.update({ where: { id: projectId }, data: { status: 'ready' } });
       return created;
@@ -71,11 +74,7 @@ export const vectorizeHandler: JobHandler<VectorizeJobParams> = async ({ project
     );
     return { resultAssetId: asset.id };
   } catch (err) {
-    // Back to "ready" if an earlier vector still exists on this version, else "draft".
-    const previous = await prisma.asset.count({ where: { versionId, type: 'vector' } });
-    await prisma.project
-      .update({ where: { id: projectId }, data: { status: previous ? 'ready' : 'draft' } })
-      .catch(() => {});
+    await settleProjectStatus(projectId, versionId);
     throw err;
   }
 };

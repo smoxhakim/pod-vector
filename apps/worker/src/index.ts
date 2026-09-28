@@ -7,6 +7,7 @@ import './env'; // must load before anything reads process.env (Prisma, Redis)
 import { prisma } from '@pod-vector-studio/db';
 import { QUEUES, type QueueName } from '@pod-vector-studio/shared';
 import { Worker, type Processor } from 'bullmq';
+import { backgroundHandler } from './jobs/background';
 import { noopHandler } from './jobs/noop';
 import { vectorizeHandler } from './jobs/vectorize';
 import { runJob } from './jobs/run-job';
@@ -16,6 +17,7 @@ import { connection } from './redis';
 const handlers: Partial<Record<QueueName, Processor<any>>> = {
   [QUEUES.system]: runJob(noopHandler),
   [QUEUES.vectorize]: runJob(vectorizeHandler),
+  [QUEUES.backgroundRemoval]: runJob(backgroundHandler),
 };
 
 function startWorkers(): Worker[] {

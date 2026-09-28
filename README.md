@@ -52,6 +52,16 @@ it) so adjacent shapes never show hairline gaps. Every result passes `isTrueVect
 path geometry, no `<image>`/data URIs — or the job fails honestly. Run `npm test -w
 @pod-vector-studio/worker` for the engine tests.
 
+## Background removal (colour key)
+
+`apps/worker/src/background/remove.ts`: auto-detection reads the 2px border ring (mostly
+transparent → nothing to do; one dominant colour → that's the background). Removal keys out
+pixels near that colour — by default only the region connected to the image edge, so white
+parts inside the design survive. Edge pixels within 2px are un-mixed: alpha comes from
+projecting each pixel onto the background→design-colour line, and its colour becomes the pure
+design colour, so there's no halo on dark shirts. The result is a `cleaned` PNG on the same
+version, and vectorization traces it instead of the original.
+
 ## Storage setup (Cloudflare R2)
 
 Uploads go straight from the browser to R2 via presigned URLs; the app never proxies file bytes.
@@ -80,4 +90,4 @@ its whole prefix.
 
 ## Status
 
-Phase 1.1 (scaffold), 1.2 (auth), 1.3 (projects), 1.4 (uploads), 1.5 (job queue) and 1.6 (Logo-mode vectorization) done; 1.4 and 1.6 still need an end-to-end run against R2 — see TODO.md for the phased roadmap.
+Phase 1.1 (scaffold), 1.2 (auth), 1.3 (projects), 1.4 (uploads), 1.5 (job queue), 1.6 (Logo-mode vectorization) and 1.7 (background removal) done; 1.4, 1.6 and 1.7 still need an end-to-end run against R2 — see TODO.md for the phased roadmap.
