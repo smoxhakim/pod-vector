@@ -35,4 +35,4 @@ source directly: Next transpiles them via `transpilePackages`, the worker runs u
 
 ## Status
 
-Phase 1.1 (monorepo scaffold) and 1.2 (auth) done — see TODO.md for the phased roadmap.
+Phase 1.1 (scaffold), 1.2 (auth) and 1.3 (projects) done — see TODO.md for the phased roadmap.

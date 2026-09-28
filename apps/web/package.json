@@ -13,6 +13,7 @@
     "@next-auth/prisma-adapter": "^1.0.7",
     "@pod-vector-studio/db": "*",
     "@pod-vector-studio/shared": "*",
+    "@radix-ui/react-dialog": "^1.1.23",
     "@tanstack/react-query": "^5.28.0",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.7.0",
